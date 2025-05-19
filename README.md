@@ -13,12 +13,12 @@ Perfect for exploring:
 
 ## Features
 
-| Feature | Description |
-|---------|-------------|
+| Feature                          | Description                                                         |
+|----------------------------------|---------------------------------------------------------------------|
 | **Configurable batch generator** | Choose how many fake requests to create and their per-item timeout. |
-| **IndexedDB persistence** | All tasks survive refreshes via Dexie. |
-| **Auto-resuming queue** | Modal prompts to “Continue” or “Discard” leftover tasks on return. |
-| **Live progress bar** | Shows % complete and remaining items in real time. ||
+| **IndexedDB persistence**        | All tasks survive refreshes via Dexie.                              |
+| **Auto-resuming queue**          | Modal prompts to “Continue” or “Discard” leftover tasks on return.  |
+| **Live progress bar**            | Shows % complete and remaining items in real time.                  ||
 
 <br>
 

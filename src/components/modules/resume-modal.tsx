@@ -23,7 +23,7 @@ const ResumeModal = ({
   processQueue,
 }: ResumeModalProps) => (
   <Dialog open={showModal}>
-    <DialogContent>
+    <DialogContent className="[&>button]:hidden">
       <DialogHeader>
         <DialogTitle>Resume unfinished queue?</DialogTitle>
         <DialogDescription>
