@@ -5,10 +5,13 @@ import ProgressCard from "@/components/modules/progress-card";
 import Footer from "@/components/modules/footer";
 import ResumeModal from "@/components/modules/resume-modal";
 import useRequestQueue from "@/hooks/use-request-queue";
+import db from "@/lib/db";
 
 export default function IndexDBTesting() {
   const { progress, remaining, isProcessing, pendingCount, actions } =
-    useRequestQueue();
+    useRequestQueue({
+      db,
+    });
 
   const showModal = pendingCount > 0 && !isProcessing;
 

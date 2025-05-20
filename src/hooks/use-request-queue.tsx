@@ -1,9 +1,9 @@
-/* hooks/useRequestQueue.ts */
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import Dexie, { EntityTable } from "dexie";
 import type Request from "@/types/request";
-import db from "@/lib/db";
 import { sleep } from "@/lib/utils";
 
 export interface QueueControls {
@@ -18,77 +18,59 @@ export interface QueueControls {
   };
 }
 
-export default function useRequestQueue(): QueueControls {
+export default function useRequestQueue({
+  db,
+}: {
+  db: Dexie & { requests: EntityTable<Request, "id"> };
+}): QueueControls {
+  const pendingCount = useLiveQuery(() => db.requests.count(), [db]) ?? 0;
   const [progress, setProgress] = useState(0);
-  const [remaining, setRemaining] = useState(0);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isProcessing, setRunning] = useState(false);
 
   const processingRef = useRef(false);
-
-  const refreshPending = useCallback(async () => {
-    const cnt = await db.requests.count();
-    setPendingCount(cnt);
-  }, []);
 
   const processQueue = useCallback(async () => {
     if (processingRef.current) return;
     processingRef.current = true;
-    setIsProcessing(true);
+    setRunning(true);
 
-    const items = await db.requests.toArray();
-    const total = items.length;
-    if (total === 0) {
+    try {
+      const items = await db.requests.orderBy("id").toArray();
+      const total = items.length;
+      if (!total) return;
+
+      for (let i = 0; i < total; i++) {
+        const { id, timeout } = items[i];
+        await sleep(timeout * 1_000);
+        id && (await db.requests.delete(id));
+
+        setProgress(Math.round(((i + 1) / total) * 100));
+      }
+    } finally {
+      setProgress(0);
+      setRunning(false);
       processingRef.current = false;
-      setIsProcessing(false);
-      await refreshPending();
-      return;
     }
+  }, [db]);
 
-    setRemaining(total);
+  const addRequests = useCallback(
+    async (reqs: Request[]) => {
+      await db.requests.bulkAdd(reqs);
+      void processQueue();
+    },
+    [db, processQueue],
+  );
 
-    for (let i = 0; i < total; i += 1) {
-      const r = items[i];
-      await sleep(r.timeout * 1_000);
-      if (r.id !== undefined) await db.requests.delete(r.id);
-      const done = i + 1;
-      setProgress(Math.round((done / total) * 100));
-      setRemaining(total - done);
-    }
-
-    setProgress(0);
-    setRemaining(0);
-    processingRef.current = false;
-    setIsProcessing(false);
-    await refreshPending();
-  }, [refreshPending]);
-
-  const addRequests = async (reqs: Request[]) => {
-    await db.requests.bulkAdd(reqs);
-    await refreshPending();
-    void processQueue();
-  };
-
-  const clearQueue = async () => {
+  const clearQueue = useCallback(async () => {
     await db.requests.clear();
     setProgress(0);
-    setRemaining(0);
-    await refreshPending();
-  };
-
-  useEffect(() => {
-    void refreshPending();
-  }, [refreshPending]);
+  }, [db]);
 
   return {
     progress,
-    remaining,
+    remaining: pendingCount,
     isProcessing,
     pendingCount,
-    actions: {
-      addRequests,
-      processQueue,
-      clearQueue,
-    },
+    actions: { addRequests, processQueue, clearQueue },
   };
 }
